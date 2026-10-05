@@ -1,0 +1,311 @@
+---
+title: "Group 1 — Clinic bodies"
+subtitle: "Studio wall"
+author: "Group names here"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+---
+
+# Spine
+
+> Who is well in the clinic, who is labelled ill, and where does infant death still sit on the map?
+
+This sentence stays at the top. Every panel must attach to it. If a plot cannot be introduced in a clause that hangs off this line, it is off the wall.
+
+# Introduction — the tables we own
+
+- **Panel A** (`panel-A.csv`) — clinic measurements: age, blood pressure, cholesterol, maximum heart rate, plus sex and heart-disease label for grouping.
+- **Panel B** (`panel-B.csv`) — the *same people*, Quals only: chest pain, blood sugar flag, exercise angina, heart disease.
+- **Panel C** (`panel-C.csv`) — infant mortality by country. No geometry in the file; we join to a world map in R.
+
+A does not grow a mosaic. B does not grow a honest histogram of chest pain. C is a rate, not a headcount.
+
+We load from this folder:
+
+Found tables train the mark. A campus Free Hunch, if we collect one, is a **made** panel of the same pair type — new people, old grammar. It does not replace A, B, or C.
+
+```{r}
+#| label: SETUP
+library(tidyverse)
+library(skimr)
+library(mosaic)
+library(ggformula)
+```
+
+# Panel A — body / measure
+
+*Age, BP, Cholesterol, MaximumHR are Quant. Sex and HeartDisease are Quals used to *split* the Quants.*
+
+
+### 1. See the table
+
+What is a case? Which columns are Quant / Qual? What is missing?
+
+The Qualitative variable in this table entail - HeartDisease and Sex(These were character variables which were mutated to factor variables).
+
+the quantitative variables in this table are - Age, BP, Cholestrol, MaximumHR.
+
+A few piecies of data missing here are the fatality rate and the fact that casuality cannot be proved since this is not an RCT data set.
+
+```r
+# glimpse() / inspect() / skim()
+```
+
+```{r}
+
+myPanelAData <- read_csv(file = "dta/panel-A.csv")
+
+glimpse(myPanelAData)
+
+```
+
+```{r}
+#| label: change_to_factor
+myPanelAData |> mutate(Sex = as.factor(Sex))
+myPanelAData |> mutate(HeartDisease = as.factor(HeartDisease))
+myPanelAMod <- myPanelAData |> dplyr::mutate(Sex = as.factor(Sex), HeartDisease = as.factor(HeartDisease))
+glimpse(myPanelAMod)
+```
+
+```{r}
+
+myPanelAData <- read_csv(file = "dta/panel-A.csv")
+skim(myPanelAData)
+
+```
+
+### 2. Ask
+
+One question *this* table can answer. One it cannot. Write both.
+
+Question can answer:
+1.How does cholestrol affect different sex?
+
+2.Based on sex and age how does the maximum Heartrate fluctuate?
+
+3.How does the age distribution of people with and without heart disease differ in this dataset?
+
+4.how does the number of men and women having BP vary over the years?
+
+Questions it cannot answer:
+
+1.For what % of the population is cholestrol the reason for heart disease?
+
+2.Does sex itself influence a person's maximum heart rate, or are the differences in maximum heart rate actually related to other factors such as age or health?
+
+### 3. Choose a mark
+
+Geom, map mark, or (later) test that matches the pair type. Name it before you code.
+
+Questions can be answered:
+```{r}
+myPanelAData |> gf_boxplot(~ Cholesterol, bins = 50, fill = ~ Sex)
+```
+
+```{r}
+myPanelAData |> gf_point(MaximumHR~Age, color = ~Sex) |>  gf_smooth(method = "lm") |>  gf_density_2d()
+```
+
+```{r}
+myPanelAData |> gf_boxplot(Age ~ HeartDisease)
+```
+
+```{r}
+myPanelAMod |> gf_line(BP ~ Age,bins= 100, color =  ~Sex)
+```
+
+Questions that cannot be answered:
+```{r}
+myPanelAData |> gf_point(Cholesterol~Sex,color = ~HeartDisease)
+```
+
+```{r}
+myPanelAData |> ggplot(aes(Sex, MaximumHR, fill = Sex)) + geom_violin(alpha = 0.6) + geom_jitter(width = 0.08, alpha = 0.3, size = 1) + theme_minimal()
+```
+
+### 4. Predict
+
+What do we think we will see? One sentence, before Run.
+
+### 5. Make
+
+Human brick first. Optional: one AI prompt, pasted below, only for what section 3 named.
+
+```r
+# human chunk
+
+# ## Prompt we actually used
+# ai_draft
+# ours
+```
+
+### 6. Say
+
+Caption + one sentence we will stand behind. Title is a sentence, not a column name.
+
+### 7. Limit
+
+What this panel cannot do. Which kit table we refused to abuse.
+
+```{r}
+myPanelAData |> group_by(Sex) |> summarize( mean_MaximumHR = mean(MaximumHR, na.rm = TRUE))
+myPanelAData |> group_by(Sex) |> summarize( mean_Cholesterol = mean(Cholesterol, na.rm = TRUE))
+myPanelAData |> group_by(Sex) |> summarize( mean_BP = mean(BP, na.rm = TRUE))
+```
+
+```{r}
+mosaic::t_test(MaximumHR ~ Sex, data = myPanelAData)
+mosaic::t_test(Cholesterol ~ Sex, data = myPanelAData)
+mosaic::t_test(BP ~ Sex, data = myPanelAData)
+```
+
+# Panel B — category / talk
+
+*ChestPain, Sex, HeartDisease, ExerciseInducedAngina. Mosaic or stacked bar. No mean of ChestPain.*
+
+
+### 1. See the table
+
+What is a case? Which columns are Quant / Qual? What is missing?
+
+```r
+# glimpse() / inspect() / skim()
+```
+
+```{r}
+myPanelBData <- read_csv(file = "dta/panel-B.csv")
+
+skim(myPanelBData)
+```
+
+```{r}
+
+myPanelBData <- read_csv(file = "dta/panel-B.csv")
+glimpse(myPanelBData)
+```
+
+### 2. Ask
+
+One question *this* table can answer. One it cannot. Write both.
+
+### 3. Choose a mark
+
+Geom, map mark, or (later) test that matches the pair type. Name it before you code.
+
+### 4. Predict
+
+What do we think we will see? One sentence, before Run.
+
+### 5. Make
+
+Human brick first. Optional: one AI prompt, pasted below, only for what section 3 named.
+
+```r
+# human chunk
+
+# ## Prompt we actually used
+# ai_draft
+# ours
+```
+
+### 6. Say
+
+Caption + one sentence we will stand behind. Title is a sentence, not a column name.
+
+### 7. Limit
+
+What this panel cannot do. Which kit table we refused to abuse.
+
+
+# Panel C — place
+
+*Join `country` to `rnaturalearth` / `tmap::World`. Fill is infant mortality (a rate).*
+
+Geometry is not in the CSV. Join in R, then use the same seven headings.
+
+```r
+# library(sf)
+# library(rnaturalearth)
+# world <- ne_countries(scale = "medium", returnclass = "sf")
+# # join on country name; list the unmatched labels
+```
+
+
+### 1. See the table
+
+What is a case? Which columns are Quant / Qual? What is missing?
+
+```r
+# glimpse() / inspect() / skim()
+```
+```{r}
+myPanelCData <- read_csv(file = "dta/panel-C.csv")
+glimpse(myPanelCData)
+```
+
+```{r}
+
+myPanelCData <- read_csv(file = "dta/panel-C.csv")
+skim(myPanelCData)
+
+```
+
+```{r}
+
+myPanelCData <- read_csv(file = "dta/panel-C.csv")
+
+inspect(myPanelCData)
+```
+
+### 2. Ask
+
+One question *this* table can answer. One it cannot. Write both.
+
+### 3. Choose a mark
+
+Geom, map mark, or (later) test that matches the pair type. Name it before you code.
+
+### 4. Predict
+
+What do we think we will see? One sentence, before Run.
+
+### 5. Make
+
+Human brick first. Optional: one AI prompt, pasted below, only for what section 3 named.
+
+```r
+# human chunk
+
+# ## Prompt we actually used
+# ai_draft
+# ours
+```
+
+### 6. Say
+
+Caption + one sentence we will stand behind. Title is a sentence, not a column name.
+
+### 7. Limit
+
+What this panel cannot do. Which kit table we refused to abuse.
+
+
+# Conclusion
+
+What the spine looks like after three panels.
+
+- The question we will defend in ninety seconds
+- What we will **not** claim
+- Which lines were human, which were machine
+- Limits: sample, missingness, the test we did not run
+- Gift for the steal-this strip (palette, annotation, join trick)
+
+```r
+# sessionInfo()
+```
+
+
+
+
