@@ -25,13 +25,30 @@ We load from this folder:
 
 Found tables train the mark. A campus Free Hunch, if we collect one, is a **made** panel of the same pair type — new people, old grammar. It does not replace A, B, or C.
 
+{{< include _setup.qmd >}}
+
 ```{r}
-#| label: Set up chunk
+#| label: setup
 library(tidyverse)
 library(skimr)
 library(mosaic)
+library(dplyr)
 library(ggformula)
+library(ggplot2)
+library(sf)
+library(rnaturalearth)
 library(vcd)
+library(sysfonts)
+library(systemfonts)
+library(showtext)
+library(ggtext)
+library(ggrepel)
+library(marquee)
+library(tibble)
+library(leaflet) 
+library(htmltools)
+library(maps)
+library(readr)
 ```
 
 # Panel A — body / measure
@@ -92,7 +109,7 @@ Questions that can be answered:
 
 ```{r}
 #| label: Chart1-Question1A
-myPanelAData |> gf_boxplot(~ Cholesterol, bins = 50, fill = ~ Sex)
+myPanelAData |> gf_boxplot(~ Cholesterol, bins = 50, fill = ~ Sex, title = "Distribution of Cholesterol Levels", subtitle = "Comparing cholesterol levels across sexes", caption = "Source: Panel A dataset")
 ```
 
 ```{r}
@@ -252,15 +269,17 @@ mosaic::xchisq.test(BloodSugar ~ ExerciseInducedAngina, data = myPanelBData)
 mosaic::xchisq.test(ChestPain ~ ExerciseInducedAngina, data = myPanelBData)
 ```
 
-Observation and conclusions drawn:
+### Observation and conclusions drawn
 
-Blood Sugar ~ Exercise Induced Angina-
-The above test proves that there is no significant correlation between the two variables. It states that the Blood Sugar and Exercise Induced Angina are independent of each other.
-Further since the p value exceeds 0.5 it fails to prove the fact that nothing is happening.
+**Blood Sugar and Exercise-Induced Angina**
 
-Chest Pain ~ Exercise Induced Angina-
-The above test proves that there is strong association between the two variables. Chest Pain and Exercise Induced Angina are Highly dependent on each other.
-The low p value proves the hypothesis that nothing is happening.
+A high p-value means that we do not have sufficient evidence to reject the null hypothesis of independence. It does not prove that the variables are independent.
+
+**Chest Pain and Exercise-Induced Angina**
+
+A low p-value provides evidence against the null hypothesis of independence, suggesting an association between the variables. It does not prove that one variable causes the other.
+
+The conclusions should be based on the actual p-values from the statistical tests.
 
 
 ### 4. Predict:What do we think we will see? One sentence.
@@ -291,6 +310,11 @@ The contingency table.
 
 *Join `country` to `rnaturalearth` / `tmap::World`. Fill is infant mortality (a rate).*
 
+```{r}
+#| label: My Panel C data
+myPanelCData <-  read_csv(file = "dta/panel-C.csv")
+```
+
 Geometry is not in the CSV. Join in R, then use the same seven headings.
 
 ```r
@@ -299,8 +323,6 @@ Geometry is not in the CSV. Join in R, then use the same seven headings.
 # world <- ne_countries(scale = "medium", returnclass = "sf")
 # # join on country name; list the unmatched labels
 ```
-
-
 ### 1. See the table
 
 What is a case? Which columns are Quant / Qual? What is missing?
@@ -309,70 +331,408 @@ What is a case? Which columns are Quant / Qual? What is missing?
 # glimpse() / inspect() / skim()
 ```
 ```{r}
-myPanelCData <- read_csv(file = "dta/panel-C.csv")
+#| label: Table for Panel C
 glimpse(myPanelCData)
-```
-
-```{r}
-
-myPanelCData <- read_csv(file = "dta/panel-C.csv")
 skim(myPanelCData)
-
+inspect(myPanelCData)
 ```
 
 ```{r}
+#| label: PanelC_WorldMap
 
-myPanelCData <- read_csv(file = "dta/panel-C.csv")
+myPanelCData <- read_csv("dta/panel-C.csv")
 
-inspect(myPanelCData)
+world_C <- ne_countries(
+  scale = "medium",
+  returnclass = "sf"
+) |>
+  left_join(myPanelCData, by = c("name" = "country"))
+
+world_map <- map_data("world")
+
+world_map_C <- world_map |>
+  left_join(
+    world_C |> sf::st_drop_geometry(),
+    by = c("region" = "name")
+  )
+
+ggplot(world_map_C) +
+  geom_polygon(
+    aes(
+      x = long,
+      y = lat,
+      group = group,
+      fill = lifeExp
+    ),
+    color = "white",
+    linewidth = 0.1
+  ) +
+  scale_fill_viridis_c(na.value = "grey85") +
+  labs(
+    title = "Life Expectancy Around the World",
+    subtitle = "Comparing life expectancy across countries",
+    fill = "Life expectancy (years)",
+    caption = "Source: Panel C dataset"
+  ) +
+  coord_fixed(1.3) +
+  theme_minimal()
+```
+
+
+```{r}
+#| label: Change to factor(Panel C)
+myPanelCData <- myPanelCData |>
+  mutate(across(where(is.character), as.factor))
+glimpse(myPanelCData)
 ```
 
 ### 2. Ask
 
 One question *this* table can answer. One it cannot. Write both.
 
+Questions it can answer:
+1. Which continents have the highest GDP per capita?
+2. Which continents have the largest total populations?
+3. Does life expectancy vary across continents?
+4. do countries around the world differ in life expectancy, population, and GDP per capita in 2007?
+5. Is higher GDP per capita associated with higher life expectancy? 
+6. Do countries with larger populations tend to have lower life expectancy?
+
+Questions it cannot answer:
+1. Has GDP per capita changed over the years?
+2. Has life expectancy improved over the years?
+3. Does having a higher GDP per capita cause people to live longer?
+
 ### 3. Choose a mark
 
 Geom, map mark, or (later) test that matches the pair type. Name it before you code.
+
+```{r}
+#| label: Chart1_Question1C
+myPanelCData |> gf_boxplot(gdpPercap ~ continent)
+```
+
+```{r}
+#| label: Chart2_Question2C
+C_pop <- myPanelCData |>
+  group_by(continent) |>
+  summarise(total_pop = sum(pop, na.rm = TRUE))
+
+gf_col(total_pop ~ continent, data = C_pop)
+```
+
+```{r}
+#| label: Chart3_Question3C
+myPanelCData |> gf_boxplot(lifeExp ~ continent)
+```
+
+```{r}
+world_C <- ne_countries(scale = "medium", returnclass = "sf") |>
+  left_join(myPanelCData, by = c("name" = "country"))
+```
+
+```{r}
+#| label: Chart_Q4a_LifeExpectancy
+gf_polygon(
+  lat ~ long,
+  data = world_map_C,
+  group = ~group,
+  fill = ~lifeExp
+) +
+  scale_fill_viridis_c(na.value = "grey85") +
+  labs(
+    title = "Life Expectancy Around the World",
+    subtitle = "Comparing life expectancy across countries in 2007",
+    caption = "Source: Panel C dataset, 2007.",
+    fill = "Life expectancy (years)"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+#| label: Chart_Q4b_Population
+
+gf_polygon(
+  lat ~ long,
+  data = world_map_C,
+  group = ~group,
+  fill = ~log10(pop)
+) +
+  scale_fill_viridis_c(na.value = "grey85") +
+  labs(
+    title = "Population Around the World",
+    subtitle = "Comparing country populations in 2007",
+    caption = "Source: Panel C dataset, 2007.",
+    fill = "Population (log10 scale)"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+#| label: Chart_Q4c_GDPperCapita
+
+gf_polygon(
+  lat ~ long,
+  data = world_map_C,
+  group = ~group,
+  fill = ~gdpPercap
+) +
+  scale_fill_viridis_c(na.value = "grey85") +
+  labs(
+    title = "GDP per Capita Around the World",
+    subtitle = "Comparing GDP per person across countries in 2007",
+    caption = "Source: Panel C dataset, 2007.",
+    fill = "GDP per capita"
+  ) +
+  theme_minimal()
+```
+
+
+```{r}
+#| label: Chart5_Question5C
+myPanelCData |> gf_point(lifeExp ~ gdpPercap)
+```
+
+```{r}
+#| label: Chart6_Question6C
+world_points <- world_C |>
+  filter(!is.na(pop), !is.na(lifeExp)) |>
+  sf::st_transform(4326) |>
+  sf::st_centroid()
+
+ggplot() +
+  geom_sf(data = world_C, fill = "grey95") +
+  geom_sf(
+    data = world_points,
+    aes(size = pop, color = lifeExp),
+    alpha = 0.85
+  ) +
+  scale_size_area(max_size = 10) +
+  scale_color_viridis_c() +
+  labs(
+    title = "Population and Life Expectancy",
+    subtitle = "Comparing population size and life expectancy across countries",
+    caption = "Source: Panel C dataset, 2007",
+    size = "Population",
+    color = "Life expectancy (years)"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+#| label: Chart1_Question1CN
+myPanelCData |> gf_boxplot(gdpPercap ~ continent)
+```
+
+```{r}
+#| label: Chart2_Question2CN
+myPanelCData |> gf_point(lifeExp ~ gdpPercap, color = ~ continent)
+```
+
+```{r}
+#| label: Chart3_Question3CN
+myPanelCData |> gf_boxplot(lifeExp ~ continent)
+```
+
 
 ### 4. Predict
 
 What do we think we will see? One sentence, before Run.
 
-### 5. Make
-
-Human brick first. Optional: one AI prompt, pasted below, only for what section 3 named.
-
-```r
-# human chunk
-
-# ## Prompt we actually used
-# ai_draft
-# ours
-```
+We predict that GDP per capita, population, and life expectancy will vary across continents, and that countries with higher GDP per capita will generally have higher life expectancy, while both GDP per capita and life expectancy may show changes over time.
 
 ### 6. Say
 
-Caption + one sentence we will stand behind. Title is a sentence, not a column name.
+Title: GDP per Capita, Population, and Life Expectancy Reveal Differences Across Countries
+
+Caption: Source: Panel C dataset, Gapminder.
+
+One sentence we can stand behind: The data shows differences in GDP per capita, population, and life expectancy across countries and continents, with higher GDP per capita generally associated with higher life expectancy, although this relationship does not establish causation.
 
 ### 7. Limit
 
-What this panel cannot do. Which kit table we refused to abuse.
+What this panel cannot do:
+Panel C cannot establish that higher GDP per capita causes longer life expectancy, explain why population sizes differ across countries, or determine what factors are responsible for changes in GDP per capita and life expectancy over time.
+
+Kit we refused to abuse:
+We did not use the dataset to make causal claims because it shows relationships and patterns, not proof of cause and effect.
 
 
 # Conclusion
 
-What the spine looks like after three panels.
+Across our three panels, we explored patterns in health, categorical variables, and differences between countries. We used boxplots, bar charts, scatterplots, and maps to understand how variables relate to one another.
 
 - The question we will defend in ninety seconds
+How can data visualisation help us identify patterns without assuming that one variable causes another?
+
 - What we will **not** claim
+We will not claim that association proves causation or that our findings apply to everyone. Our graphs show patterns in the available data, not the complete reasons behind them.
+
 - Which lines were human, which were machine
+We chose the questions and interpreted the patterns as a group, while R and its packages helped us create graphs, conduct statistical tests, and present the data. The tools helped with the process, but interpreting the results required our own judgement.
+
 - Limits: sample, missingness, the test we did not run
+Our conclusions are limited by the available variables, missing information, and the scope of the datasets. We also need to be careful with geographical joins and avoid making claims that we have not tested statistically.
+
 - Gift for the steal-this strip (palette, annotation, join trick)
+Creating a reusable theme for fonts and colours helped us keep our graphs consistent. We also learned that joining geographical data requires checking country names and unmatched locations.
+
+Overall, we learned that a good graph is not just about appearance. It should answer a meaningful question, represent the data honestly, and make its limitations clear.
 
 ```r
 # sessionInfo()
 ```
+
+# Panel D
+
+Hinkley, California, An environmental investigation inspired by Erin Brockovich
+
+The contamination of groundwater in Hinkley reveals how an industrial site can become connected to the everyday lives of a community through something that is largely invisible: the water beneath the ground.
+
+This panel examines the spatial relationship between the PG&E Hinkley Compressor Station and the nearby community, alongside research into historical chromium discharges, groundwater monitoring and remediation.
+
+The map establishes the geographical context of the case. Supporting research records document the contamination issue and identify sources for further investigation. Together, they distinguish between the locations we can map and the wider environmental story that requires documentary evidence.
+
+### 1. See the table
+
+```{r}
+#| label: PanelD_Data 
+
+panelDData <- read_csv("panel-D.csv",show_col_types = FALSE, na = c("", "NA"))
+
+panelDMapData <- panelDData |>
+  filter(!is.na(latitude),!is.na(longitude))
+
+glimpse(panelDData)
+```
+
+
+```{r}
+#| label: PanelD_Map
+#| fig-width: 10
+#| fig-height: 7
+
+facility <- panelDMapData |>
+  filter(feature_type == "Facility")
+
+community <- panelDMapData |>
+  filter(feature_type == "Community")
+
+leaflet() |>
+  addTiles() |>
+  fitBounds(
+    lng1 = min(panelDMapData$longitude) - 0.025,
+    lat1 = min(panelDMapData$latitude) - 0.015,
+    lng2 = max(panelDMapData$longitude) + 0.025,
+    lat2 = max(panelDMapData$latitude) + 0.015
+  ) |>
+  addCircleMarkers(
+    data = facility,
+    lng = ~longitude,
+    lat = ~latitude,
+    radius = 10,
+    color = "#8B1E2D",
+    weight = 3,
+    fillColor = "#D1495B",
+    fillOpacity = 0.9,
+    popup = ~paste0(
+      "<b>PG&E Hinkley Compressor Station</b><br>",
+      description,
+      "<br><br><i>",
+      evidence_status,
+      "</i>"
+    ),
+    group = "Industrial facility"
+  ) |>
+  addCircleMarkers(
+    data = community,
+    lng = ~longitude,
+    lat = ~latitude,
+    radius = 8,
+    color = "#155E75",
+    weight = 3,
+    fillColor = "#38A3A5",
+    fillOpacity = 0.9,
+    popup = ~paste0(
+      "<b>Hinkley community</b><br>",
+      description,
+      "<br><br><i>",
+      evidence_status,
+      "</i>"
+    ),
+    group = "Community reference"
+  ) |>
+  addLegend(
+    position = "bottomright",
+    colors = c("#D1495B", "#38A3A5"),
+    labels = c(
+      "PG&E compressor station",
+      "Hinkley community reference"
+    ),
+    title = "Map key",
+    opacity = 0.9
+  ) |>
+  addScaleBar(
+    position = "bottomleft",
+    options = scaleBarOptions(
+      imperial = TRUE,
+      metric = TRUE
+    )
+  ) |>
+  addControl(
+    html = HTML(
+      paste0(
+        "<div style='background:white;padding:12px 15px;",
+        "border-left:4px solid #8B1E2D;",
+        "max-width:310px;font-family:Arial,sans-serif;'>",
+        "<div style='font-size:11px;letter-spacing:2px;",
+        "color:#8B1E2D;font-weight:bold;'>FIELD STUDY / 04</div>",
+        "<div style='font-size:18px;font-weight:bold;",
+        "margin-top:5px;color:#222;'>HINKLEY, CALIFORNIA</div>",
+        "<div style='font-size:12px;margin-top:5px;",
+        "color:#555;line-height:1.5;'>",
+        "Industrial infrastructure, community and groundwater.",
+        "<br>Click either point for details.</div></div>"
+      )
+    ),
+    position = "topleft"
+  ) |>
+  addLayersControl(
+    overlayGroups = c(
+      "Industrial facility",
+      "Community reference"
+    ),
+    options = layersControlOptions(
+      collapsed = FALSE
+    )
+  )
+```
+
+
+## Reading the Map
+
+The map establishes the geographical relationship between the PG&E Hinkley Compressor Station and the Hinkley community. These locations provide a starting point for understanding the environmental case, but their proximity alone does not establish the extent of contamination or the exposure of any individual household.
+
+Historical chromium-bearing wastewater discharges from the compressor station affected groundwater. The contamination and its remediation have since been the subject of monitoring and regulatory oversight. The case demonstrates why groundwater contamination cannot be understood through visible surface geography alone: information about water quality, groundwater movement and monitoring is also essential.
+
+The map therefore distinguishes between geographical reference points and the wider environmental evidence. The official plume maps and groundwater monitoring records are necessary to investigate the contamination's extent and changes over time.
+
+### Limitations
+
+The coordinates shown are approximate reference locations, not survey-grade measurements. The map does not contain individual household locations, groundwater monitoring-well measurements or a verified contamination boundary. It should not be interpreted as a map of confirmed exposure or current contamination levels.
+
+### Research Sources
+
+* California State Water Resources Control Board, *PG&E Hinkley Chromium Cleanup*.
+* United States Geological Survey, *Natural and Anthropogenic Hexavalent Chromium in Groundwater near a Mapped Plume, Hinkley, California*.
+
+The map provides geographical context; the official records provide the evidence needed to investigate the environmental conditions.
+
+
+
+
+
+
 
 
 
