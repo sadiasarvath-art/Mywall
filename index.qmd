@@ -264,10 +264,15 @@ vcd::structable(ExerciseInducedAngina ~ BloodSugar, data = myPanelBData) |>
 Statistic Test
 
 ```{r}
-#| label: Chi-square_test
+#| label: Chi-square_BloodSugar
 mosaic::xchisq.test(BloodSugar ~ ExerciseInducedAngina, data = myPanelBData)
+```
+
+```{r}
+#| label: Chi-square_ChestPain
 mosaic::xchisq.test(ChestPain ~ ExerciseInducedAngina, data = myPanelBData)
 ```
+
 
 ### Observation and conclusions drawn
 
@@ -708,7 +713,6 @@ leaflet() |>
   )
 ```
 
-
 ## Reading the Map
 
 The map establishes the geographical relationship between the PG&E Hinkley Compressor Station and the Hinkley community. These locations provide a starting point for understanding the environmental case, but their proximity alone does not establish the extent of contamination or the exposure of any individual household.
@@ -728,12 +732,267 @@ The coordinates shown are approximate reference locations, not survey-grade meas
 
 The map provides geographical context; the official records provide the evidence needed to investigate the environmental conditions.
 
+## Panel E 
+
+## Part 1 - Friends Vs Modern family Vs House
+
+### 1. See the table
+
+```{r}
+#| label: myPanelE1Data
+
+MypanelE1Data <- read_csv( "Panel-E.1.csv") |> janitor::clean_names()
+```
+
+```{r}
+#| label: Table for panel E.1
+glimpse(MypanelE1Data)
+inspect(MypanelE1Data)
+skim(MypanelE1Data)
+```
+
+```{r}
+#| label: Change to factor(Panel E.1)
+MypanelE1Mod <- MypanelE1Data |> dplyr::mutate(friends = as.factor(friends), house = as.factor(house),modern_family = as.factor(modern_family))
+
+glimpse(MypanelE1Mod)
+```
+
+###Ask
+
+How do the ratings differ between Friends, House, and Modern Family?
+
+```{r}
+#| label: Reshape panel E.1
+
+MypanelE1Long <- MypanelE1Mod |> tidyr::pivot_longer(cols = c(friends, house, modern_family),names_to = "show",values_to = "scores") |>
+dplyr::mutate(scores = readr::parse_number(as.character(scores)))
+
+glimpse(MypanelE1Long)
+```
 
 
+```{r}
+#| label: Average ratings panel E.1
+
+myPanelE1Mean <- MypanelE1Long |> dplyr::group_by(show) |> dplyr::summarise(mean_score = mean(scores, na.rm = TRUE))
+
+myPanelE1Mean
+```
+
+```{r}
+#| label: Bar chart panel E.1
+
+ggformula::gf_col(mean_score ~ show,fill = ~show, data = myPanelE1Mean) |>
+  gf_labs( title = "Modern Family Has the Highest Average Rating",
+    subtitle = "Average ratings given by students out of 10",
+    x = "TV Show",
+    y = "Average Rating",
+    caption = "Based on ratings provided by students in the dataset."
+  )
+```
+
+```{r}
+#| label: ANOVA panel E.1
+
+aov(scores ~ show, data = MypanelE1Long) |> summary()
+```
+
+### Conclusion
+
+Overall, Modern Family received the highest average rating, followed by Friends and House. This suggests that Modern Family was the most highly rated of the three shows among the students who responded. However, the number of ratings varied between shows, and the results represent only the students in this dataset. The analysis helps compare their ratings, but it cannot explain why students preferred one show over another.
 
 
+## Part 2 - Are SMI students more introverted than MIT students?
+
+### 1. See the table
+
+```{r}
+#| label: myPanelE2data
+MypanelE2Data <- read_csv( "Panel-E.2.csv") |> janitor::clean_names()
+```
+
+```{r}
+#| label: Table for panel E.2
+glimpse(MypanelE2Data)
+inspect(MypanelE2Data)
+skim(MypanelE2Data)
+```
+
+```{r}
+#| label: Change to factor(Panel E.2)
+MypanelE2Mod <- MypanelE2Data |> dplyr::mutate(department = as.factor(department), mbti_type = as.factor(mbti_type),social_orientation = as.factor(social_orientation))
+
+glimpse(MypanelE2Mod)
+```
+
+```{r}
+#| label: Chi-square_test
+mosaic::xchisq.test(`social_orientation` ~ department, data = MypanelE2Mod)
+```
+
+```{r}
+#| label: Chart1-E.2
+MypanelE2Mod |> gf_bar(~`mbti_type`, fill = ~department)
+```
+
+```{r}
+#| label: Chart2-E.2
+MypanelE2Mod |> gf_bar(~`social_orientation`, fill = ~department, position = "dodge")
+```
+
+### Conclusion
+After analysis of the data, we were able to find out that SMI students are, on average, more introverted than MIT students.
 
 
+## Part 3 - Belief in AI, Art Vs Design
+
+### 1. See the table
+
+```{r}
+#| label: myPanelE3data
+MypanelE3Data <- read_csv( "Panel-E.3.csv")
+```
+
+```{r}
+#| label: Table for panel E.3
+glimpse(MypanelE3Data)
+inspect(MypanelE3Data)
+skim(MypanelE3Data)
+```
+
+```{r}
+#| label: Change to factor(Panel E.3)
+MypanelE3Mod <- MypanelE3Data |> dplyr::mutate(gender = as.factor(gender), program = as.factor(program),AI_belief = as.factor(AI_belief))
+
+glimpse(MypanelE3Mod)
+```
+
+```{r}
+#| label: Chi-square test E.3 
+mosaic::xchisq.test(AI_belief ~ gender, data = MypanelE3Mod)
+```
+
+```{r}
+#| label: Chart1-E.3
+
+vcd::mosaic(~ gender + AI_belief, data = MypanelE3Mod) 
+```
+
+###conclusion
+The analysis explored whether boys are more likely than girls to believe in AI. The mosaic plot suggests that a higher proportion of boys believe in AI compared to girls in this sample of 60 respondents. This indicates a possible association between gender and AI belief. However, the findings are limited to the respondents included in this dataset and cannot necessarily be generalised to a larger population.
 
 
+## Part 4- Do girls have a higher monthly allowance than guys?
 
+### 1. See the table
+
+```{r}
+#| label: myPanelE4data
+MypanelE4Data <- read_csv( "Panel-E.4.csv")
+```
+
+```{r}
+#| label: Table for panel E.4
+glimpse(MypanelE4Data)
+inspect(MypanelE4Data)
+skim(MypanelE4Data)
+```
+
+```{r}
+#| label: Change to factor(Panel E.4)
+MypanelE4Mod <- MypanelE4Data |> dplyr::mutate(gender = as.factor(gender))
+
+glimpse(MypanelE4Mod)
+```
+
+```{r}
+#| label: TTest for panel E.4
+mosaic::t.test(allowance ~ gender, data = MypanelE4Mod)
+```
+
+```{r}
+#| label: Chart1-E.4
+names( MypanelE4Mod)
+ MypanelE4Mod |> gf_density(~ allowance, fill = ~gender) 
+```
+
+### Conclusion
+According to the T.test, the p value is 0.49 which is much higher than 0.05. Which means that being a boy or a girl has no affect on monthly allowance which is really nice in because equality.
+
+
+## Part 5- Is it easier for the students of SMI to get into a relationship than MIT?
+
+### 1. See the table
+
+```{r}
+#| label: myPanelE5data
+MypanelE5Data <- read_csv( "FOSEDA Panel E data - Some Peasants Make Friends Easier.csv")
+```
+
+```{r}
+#| label: Table for panel E.5
+glimpse(MypanelE5Data)
+inspect(MypanelE5Data)
+skim(MypanelE5Data)
+```
+
+```{r}
+#| label: Change to factor(Panel E.5)
+MypanelE5Data |> mutate(department = as.factor(department))
+MypanelE5Data |> mutate(relationship_status = as.factor(relationship_status))
+MypanelE5Mod <- MypanelE5Data |> dplyr::mutate(department = as.factor(department), relationship_status = as.factor(relationship_status))
+glimpse(MypanelE5Mod)
+```
+
+```{r}
+#| label: chisqauretest for panel E.5
+mosaic::xchisq.test(department ~ relationship_status, data = MypanelE5Mod)
+```
+
+```{r}
+#| label: Chart1-E.5
+vcd::structable(relationship_status ~ department, data = MypanelE5Data) |> 
+  vcd::mosaic(shade = TRUE, gp = shading_Friendly, type = "expected")
+```
+
+### Conclusion
+Our investigation showed that the difference in relationship status between SMI and MIT respondents was small. The chi-square test did not provide sufficient evidence of an association between the two variables. This taught us that our initial hunches do not always match what the data reveals. We also realised that relationship status alone cannot explain how easy or difficult it is to get into a relationship. Ultimately, this exercise helped us understand the importance of questioning our assumptions and interpreting data carefully.
+
+## Part 6 - Do tatoos make a person look more attractive?
+
+### 1. See the table
+
+```{r}
+#| label: myPanelE6data
+MypanelE6Data <- read_csv( "Panel-E.6.csv")
+```
+
+```{r}
+#| label: Table for panel E.6 
+glimpse(MypanelE6Data) 
+inspect(MypanelE6Data) 
+skim(MypanelE6Data)
+```
+
+```{r}
+#| label: Change to factor (Panel E.6)
+MypanelE6Mod <- MypanelE6Data |> dplyr::mutate(gender = as.factor(gender), `has_tattoos?` = as.factor(`has_tattoos?`), opinion = as.factor(opinion))
+glimpse(MypanelE6Mod)
+```
+
+```{r}
+#| label: Chi-square test E.6
+mosaic::xchisq.test(`has_tattoos?` ~ gender, data = MypanelE6Mod)
+```
+
+```{r}
+#| label: Chart2-E.6 
+MypanelE6Mod |> ggformula::gf_bar( ~`has_tattoos?`, fill = ~gender, position = "dodge" )
+```
+
+###Conclusion
+
+After analysing the data, we found that men and women in this sample were equally likely to report having tattoos. Out of the 30 men, 15 reported having tattoos, and out of the 30 women, 15 reported having tattoos. This means that 50% of each group reported having tattoos.
+
+The chi-square test can be used to assess whether there is an association between gender and tattoo status. The results do not indicate a difference between the two groups in this sample. However, this does not establish that men and women are equally likely to have tattoos in the wider population. The dataset contains only 60 respondents, so the findings should be interpreted within that limitation.
